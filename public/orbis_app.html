@@ -514,6 +514,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--cream);c
     <div class="tb-right" id="tbr">
       <button class="tbn">🔔</button>
       <button class="tbn" onclick="go('home',document.getElementById('nav-home'),'Home')">🏠</button>
+      <button onclick="signOutOrbis()" style="padding:5px 14px;background:#1c2e28;color:#f2e4d0;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:6px">Sign Out</button>
     </div>
   </div>
   <div class="content">
@@ -3295,6 +3296,27 @@ function generateAIReport(){
   ${report.replace(/\n/g,'<br>').replace(/ /g,'&nbsp;')}
   </body></html>`);
   win.document.close();
+}
+
+
+// ── SIGN OUT ──
+async function signOutOrbis(){
+  try {
+    // Clear Supabase session
+    const SUPABASE_URL = 'https://ieccqbynawpidfygitsq.supabase.co';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllY2NxYnluYXdwaWRmeWdpdHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTU5NjgsImV4cCI6MjA5NjQzMTk2OH0.3Mgx9cqrRC9rDuA0DJXSwyismgKVPkquvJK93bT5AJo';
+    await fetch(SUPABASE_URL + '/auth/v1/logout', {
+      method: 'POST',
+      headers: {
+        'apikey': ANON_KEY,
+        'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('sb-ieccqbynawpidfygitsq-auth-token') || '{}')?.access_token || '')
+      }
+    });
+  } catch(e) {}
+  // Clear local storage
+  Object.keys(localStorage).forEach(k => { if(k.includes('supabase') || k.includes('sb-')) localStorage.removeItem(k); });
+  // Redirect to login
+  window.location.href = '/login';
 }
 
 // ══ INIT ══

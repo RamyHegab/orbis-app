@@ -1,21 +1,33 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSession } from '../../lib/auth'
+import { supabase } from '../../lib/supabase'
 
-export default function ItineraryPage() {
+export default function Page() {
   const router = useRouter()
+  const [checking, setChecking] = useState(true)
+
   useEffect(() => {
-    getSession().then(s => { if (!s) router.push('/login') })
+    async function check() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/login'); return }
+      setChecking(false)
+    }
+    check()
   }, [])
-  return (
-    <div style={{ padding: 40, fontFamily: "'DM Sans',sans-serif" }}>
-      <a href="/dashboard" style={{ color: 'var(--teal)', fontSize: 13 }}>← Dashboard</a>
-      <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 32, marginTop: 16, marginBottom: 8 }}>Plan a Trip</h1>
-      <p style={{ color: 'var(--brown3)', marginBottom: 32 }}>Full itinerary planner coming in the next update.</p>
-      <div style={{ background: 'var(--teal-bg)', border: '1px solid var(--teal3)', borderRadius: 10, padding: '16px 20px', fontSize: 13, color: 'var(--teal)' }}>
-        ✦ For now use the prototype HTML file for full itinerary planning — this page will be fully connected in Step 5 of the build.
+
+  if (checking) return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#f5ede0',fontFamily:'Georgia,serif'}}>
+      <div style={{textAlign:'center'}}>
+        <div style={{fontSize:32,color:'#2c1810',marginBottom:8}}>Orbis</div>
+        <div style={{fontSize:13,color:'#8a5c3c'}}>Loading…</div>
       </div>
+    </div>
+  )
+
+  return (
+    <div style={{width:'100vw',height:'100vh',overflow:'hidden'}}>
+      <iframe src="/orbis_app.html" style={{width:'100%',height:'100%',border:'none'}} title="Orbis CRM"/>
     </div>
   )
 }

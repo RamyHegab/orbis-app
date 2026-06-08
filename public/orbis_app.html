@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orbis — The IO Buddy</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -472,6 +473,32 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--cream);c
 </style>
 </head>
 <body>
+
+<!-- ── AUTH OVERLAY ── -->
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:#f5ede0;z-index:9999;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif">
+  <div style="background:#fdf8f2;border:1px solid #d8c4a8;border-radius:16px;padding:40px 36px;width:400px;box-shadow:0 8px 40px rgba(44,24,16,0.1)">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:#2c1810">Orbis</div>
+      <div style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#2d7a6e;margin-top:4px;font-weight:500">The IO Buddy</div>
+      <div style="font-size:12px;color:#b8896a;margin-top:4px">International Office CRM</div>
+    </div>
+    <div id="auth-error" style="display:none;background:#fdf0ee;border:1px solid #e8a0a0;border-radius:8px;padding:10px 12px;font-size:12px;color:#b03a2e;margin-bottom:16px"></div>
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#8a5c3c;margin-bottom:6px">Email</label>
+      <input id="auth-email" type="email" placeholder="your@university.ac.uk" style="width:100%;padding:10px 12px;border:1.5px solid #d8c4a8;border-radius:8px;font-size:13px;color:#2c1810;background:#f5ede0;outline:none;font-family:inherit;box-sizing:border-box">
+    </div>
+    <div style="margin-bottom:24px">
+      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#8a5c3c;margin-bottom:6px">Password</label>
+      <input id="auth-password" type="password" placeholder="••••••••" style="width:100%;padding:10px 12px;border:1.5px solid #d8c4a8;border-radius:8px;font-size:13px;color:#2c1810;background:#f5ede0;outline:none;font-family:inherit;box-sizing:border-box">
+    </div>
+    <button id="auth-btn" onclick="orbisSignIn()" style="width:100%;padding:12px;background:#1c2e28;color:#f2e4d0;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Sign In →</button>
+    <div style="margin-top:20px;text-align:center;font-size:11px;color:#b8896a">Orbis · The IO Buddy · © 2026</div>
+  </div>
+</div>
+
+<!-- ── MAIN APP (hidden until auth) ── -->
+<div id="main-app" style="display:none">
+
 <div class="shell">
 
 <!-- SIDEBAR -->
@@ -511,8 +538,9 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--cream);c
 <main class="main">
   <div class="topbar">
     <div class="tb-bc" id="bc"><span class="bc-cur">Home</span></div>
-    <div class="tb-right" id="tbr">
+    <div class="tb-right" id="tbr" style="display:flex;align-items:center;gap:8px">
       <button class="tbn">🔔</button>
+      <button onclick="orbisSignOut()" style="padding:5px 14px;background:#1c2e28;color:#f2e4d0;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Sign Out</button>
       <button class="tbn" onclick="go('home',document.getElementById('nav-home'),'Home')">🏠</button>
       <button onclick="signOutOrbis()" style="padding:5px 14px;background:#1c2e28;color:#f2e4d0;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:6px">Sign Out</button>
     </div>
@@ -2238,7 +2266,8 @@ function exportItinerary(format){
     <div class="sig">Submitted by: <span class="blank"></span> Date: <span class="blank" style="width:120px"></span></div>
     <div class="sig">Approved by (Head of Department): <span class="blank"></span> Date: <span class="blank" style="width:120px"></span></div>
     <div class="sig">Signature: <span class="blank" style="width:240px"></span></div>
-    </div></body></html>`);
+    </div></div><!-- /main-app -->
+</body></html>`);
     win.document.close();
     setTimeout(()=>win.print(),400);
   } else {
@@ -3318,6 +3347,77 @@ async function signOutOrbis(){
   // Redirect to login
   window.location.href = '/login';
 }
+
+
+// ══ SUPABASE AUTH ══
+const SUPA_URL = 'https://ieccqbynawpidfygitsq.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllY2NxYnluYXdwaWRmeWdpdHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTU5NjgsImV4cCI6MjA5NjQzMTk2OH0.3Mgx9cqrRC9rDuA0DJXSwyismgKVPkquvJK93bT5AJo';
+const { createClient } = supabase;
+const supa = createClient(SUPA_URL, SUPA_KEY);
+
+async function orbisCheckAuth() {
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) {
+    // Load user profile
+    const { data: profile } = await supa.from('users')
+      .select('full_name, role, universities(name)')
+      .eq('id', session.user.id)
+      .maybeSingle();
+    // Update greeting
+    const name = profile?.full_name || session.user.email.split('@')[0];
+    const uniName = profile?.universities?.name || 'International Office';
+    const gname = document.querySelector('.gname');
+    if (gname) gname.innerHTML = 'Welcome back, <em>' + name + '.</em>';
+    const gsub = document.querySelector('.gsub');
+    if (gsub) gsub.textContent = uniName + ' · Here\'s what\'s happening across your agent network.';
+    // Update user pill in sidebar
+    const uav = document.querySelector('.uav');
+    if (uav) uav.textContent = name.substring(0,2).toUpperCase();
+    const uname = document.querySelector('.uname');
+    if (uname) uname.textContent = name;
+    const urole = document.querySelector('.urole');
+    if (urole) urole.textContent = profile?.role || 'Officer';
+    // Show app
+    document.getElementById('auth-overlay').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+  } else {
+    // Show login
+    document.getElementById('auth-overlay').style.display = 'flex';
+    document.getElementById('main-app').style.display = 'none';
+  }
+}
+
+async function orbisSignIn() {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const btn = document.getElementById('auth-btn');
+  const errDiv = document.getElementById('auth-error');
+  btn.textContent = 'Signing in…';
+  btn.disabled = true;
+  errDiv.style.display = 'none';
+  const { error } = await supa.auth.signInWithPassword({ email, password });
+  if (error) {
+    errDiv.textContent = error.message;
+    errDiv.style.display = 'block';
+    btn.textContent = 'Sign In →';
+    btn.disabled = false;
+  } else {
+    orbisCheckAuth();
+  }
+}
+
+async function orbisSignOut() {
+  await supa.auth.signOut();
+  document.getElementById('auth-overlay').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
+}
+
+// Allow Enter key on password field
+document.addEventListener('DOMContentLoaded', function() {
+  const pw = document.getElementById('auth-password');
+  if (pw) pw.addEventListener('keydown', function(e) { if(e.key==='Enter') orbisSignIn(); });
+  orbisCheckAuth();
+});
 
 // ══ INIT ══
 renderList();renderSchools();initItinerary();renderNotes();renderMailContacts();renderTrips();initWizard();initFilters();initLeadForms();setFormsTab('active');
